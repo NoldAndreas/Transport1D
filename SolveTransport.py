@@ -1,4 +1,3 @@
-import matplotlib.pyplot as plt
 import numpy as np
 import json
 from scipy.integrate import solve_bvp
