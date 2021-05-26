@@ -24,6 +24,33 @@ TransportOptions = ['somatic, passive protein transport',\
                     'somatic, active protein transport',\
                     'dendritic, passive mRNA transport',\
                     'dendritic, active mRNA transport'];
+
+list_of_parameters = ['alpha_m',
+ 'beta_plus_m',
+ 'beta_minus_m',
+ 'v_m',
+ 'D_m',
+ 'transport_m',
+ 'halflife_m',
+ 'gamma_tl',
+ 'translation',
+ 'alpha_p',
+ 'beta_plus_p',
+ 'beta_minus_p',
+ 'v_p',
+ 'D_p',
+ 'transport_p',
+ 'halflife_p',
+ 'eta_0',
+ 'eta_max',
+ 'spine_density',
+ 'max_runs',
+ 'min_mesh_width',
+ 'num_eval_points',
+ 'rall_exp',
+ 'L','name','supply_vs_demand','ratio_synapses_supplied'];
+
+rows_results = [];
 #************************
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
@@ -100,13 +127,21 @@ app.layout = html.Div([
 
     html.Br(),
     html.Button('Compute', id='button'),
-    html.Div(id='my-output')
+    html.P(children="Parameters:"),
+    html.Div(id='my-output-parameters'),
+    html.P(children="Results:"),
+    html.Div(id='my-output-results',style={'whiteSpace': 'pre-line'}),
+    dcc.Graph(
+        id='graph-costs-1'
+    ),
 ])
 
 
 @app.callback(
     dash.dependencies.Output('graphOutput', 'figure'),
-    dash.dependencies.Output('my-output', 'children'),
+    dash.dependencies.Output('graph-costs-1', 'figure'),
+    dash.dependencies.Output('my-output-parameters', 'children'),
+    dash.dependencies.Output('my-output-results', 'children'),
     dash.dependencies.Input('button', 'n_clicks'),
     dash.dependencies.State('transport-option', 'value'),
     dash.dependencies.State('L-slider', 'value'),
@@ -143,13 +178,33 @@ def update_output(n_clicks, value,valueL,halflife_m,Dm,vm,alpham,betaPlusm,betaM
         TR.params_input['beta_minus_p'] = float(betaMinusp);
         TR.SolveTransportEqs(N);
         df = TR.GetSolution();
+        rows_results.append((TR.GetParametersAndResults(combineParameter=True)).copy());
     else:
         df = TR.GetSolution();
+
     df = df.melt(id_vars=['x'],var_name="Quantity",value_name="Value")
+
     fig = px.line(df, x="x", y="Value",facet_row="Quantity",color="Quantity");
     fig.update_yaxes(matches=None);
 
-    return fig,str(TR.params_input)#TR.params_input)#fig
+    if(len(rows_results) > 0):
+        df_res = pd.DataFrame(rows_results);
+        df_res["idx"] = np.asarray(df_res.index);
+        df_res["particles_in_active_transport_perLocalizedProtein"] = np.maximum(1e-6,np.asarray(df_res["particles_in_active_transport_perLocalizedProtein"]));
+        df_p   = df_res.melt(id_vars=["idx","parameters"],var_name="Measure",value_name="Value");
+        fig2   = px.strip(df_p,x="Value",color="idx",y="Measure",log_x=True);
+        fig2.layout.update(showlegend=False,xaxis = dict(
+            tickmode = 'array',
+            tickvals = [1e-6,1e-4,1e-2,1],
+            ticktext = ['0','1e-4','1e-2','1']
+        ))
+
+    else:
+        df_res = pd.DataFrame([]);
+        fig2   = px.strip(df_res);
+
+
+    return fig,fig2,str(TR.params_input),format(df_res.to_string())#TR.params_input)#fig
 
 
 if __name__ == '__main__':

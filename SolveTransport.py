@@ -115,12 +115,16 @@ class Transport:
             m = [0,0];
         return pd.DataFrame({'x':x,'protein':p,'mRNA':m});
 
-    def GetParametersAndResults(self):
-        p_all = self.params_input;
-        p_all['particles_in_active_transport_perLocalizedProtein']           = self.particles_in_active_transport_perLocalizedProtein;
-        p_all['ratio_synapses_supplied']                 = self.ratio_synapses_supplied;
-        p_all['ExcessmRNA_transcribed_perSynapticProtein']     = self.ExcessmRNA_transcribed_perSynapticProtein;
-        p_all['ExcessProteins_translated_perSynapticProtein']  = self.ExcessProteins_translated_perSynapticProtein;
+    def GetParametersAndResults(self,combineParameter=False):
+        if(combineParameter):
+            p_all = {};
+            p_all['parameters'] = str(self.params_input);
+        else:
+            p_all = self.params_input;
+        p_all['particles_in_active_transport_perLocalizedProtein']  = self.particles_in_active_transport_perLocalizedProtein;
+        p_all['ratio_synapses_supplied']                            = self.ratio_synapses_supplied;
+        p_all['ExcessmRNA_transcribed_perSynapticProtein']          = self.ExcessmRNA_transcribed_perSynapticProtein;
+        p_all['ExcessProteins_translated_perSynapticProtein']       = self.ExcessProteins_translated_perSynapticProtein;
         return p_all;
 
     def __computeCostItems(self):
