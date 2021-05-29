@@ -71,7 +71,7 @@ app.layout = html.Div([
         dcc.Dropdown(
             id='transport-option',
             options=[{'label': i, 'value': i} for i in TransportOptions],
-            value=TransportOptions[1]
+            value=TransportOptions[0]
         )
     ]),
     html.Div([
@@ -99,12 +99,6 @@ app.layout = html.Div([
         html.P(children="Resting state diffusion constant (mu m^2/seconds):"),dcc.Input(id="input-D-m", type="number", value=0.1,step=0.1),
 
         html.P(children="Active transport velocity (mu m/seconds):"),dcc.Input(id="input-v-m", type="number", value=1),
-
-        html.P(children="Alpha_m (per second):"),dcc.Input(id="alpha-m", type="number", value=0.3,step=0.1),
-
-        html.P(children="Beta plus (per second):"),dcc.Input(id="beta-plus-m", type="number", value=0.3,step=0.1),
-
-        html.P(children="Beta minus (per second):"),dcc.Input(id="beta-minus-m", type="number", value=0.4,step=0.1),
     ],style={'width': '49%', 'display': 'inline-block'}),
 
     #************************************************
@@ -116,12 +110,6 @@ app.layout = html.Div([
         html.P(children="Resting state diffusion constant (mu m^2/seconds):"),dcc.Input(id="input-D-p", type="number", value=0.1,step=0.1),
 
         html.P(children="Active transport velocity (mu m/seconds):"),dcc.Input(id="input-v-p", type="number", value=1),
-
-        html.P(children="Alpha_m (per second):"),dcc.Input(id="alpha-p", type="number", value=0.3,step=0.1),
-
-        html.P(children="Beta plus (per second):"),dcc.Input(id="beta-plus-p", type="number", value=0.3,step=0.1),
-
-        html.P(children="Beta minus (per second):"),dcc.Input(id="beta-minus-p", type="number", value=0.4,step=0.1),
     ],style={'width': '49%', 'display': 'inline-block'}),
     ]),
 
@@ -152,18 +140,12 @@ app.layout = html.Div([
     dash.dependencies.State('input-halflife-m', 'value'),
     dash.dependencies.State('input-D-m', 'value'),
     dash.dependencies.State('input-v-m', 'value'),
-    dash.dependencies.State('alpha-m', 'value'),
-    dash.dependencies.State('beta-plus-m', 'value'),
-    dash.dependencies.State('beta-minus-m', 'value'),
     dash.dependencies.State('input-halflife-p', 'value'),
     dash.dependencies.State('input-D-p', 'value'),
     dash.dependencies.State('input-v-p', 'value'),
-    dash.dependencies.State('alpha-p', 'value'),
-    dash.dependencies.State('beta-plus-p', 'value'),
-    dash.dependencies.State('beta-minus-p', 'value'),
     )
-def update_output(n_clicks, value,valueL,halflife_m,Dm,vm,alpham,betaPlusm,betaMinusm,\
-                                         halflife_p,Dp,vp,alphap,betaPlusp,betaMinusp):
+def update_output(n_clicks, value,valueL,halflife_m,Dm,vm,\
+                                         halflife_p,Dp,vp):
     #fig.update_layout(clickmode='event+select')
     if((n_clicks != None) and  (n_clicks>0)):
         TR.params_input['name'] = value;
@@ -171,15 +153,9 @@ def update_output(n_clicks, value,valueL,halflife_m,Dm,vm,alpham,betaPlusm,betaM
         TR.params_input['halflife_m'] = float(halflife_m);#float(halflife_m),
         TR.params_input['D_m'] = float(Dm);
         TR.params_input['v_m'] = float(vm);
-        TR.params_input['alpha_m'] = float(alpham);
-        TR.params_input['beta_plus_m'] = float(betaPlusm);
-        TR.params_input['beta_minus_m'] = float(betaMinusm);
         TR.params_input['halflife_p'] = float(halflife_p);
         TR.params_input['D_p'] = float(Dp);
         TR.params_input['v_p'] = float(vp);
-        TR.params_input['alpha_p'] = float(alphap);
-        TR.params_input['beta_plus_p'] = float(betaPlusp);
-        TR.params_input['beta_minus_p'] = float(betaMinusp);
         TR.SolveTransportEqs(N);
         df = TR.GetSolution();
         rows_results.append((TR.GetParametersAndResults(combineParameter=True)).copy());

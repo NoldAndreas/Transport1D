@@ -2,6 +2,7 @@ import numpy as np
 import json
 from scipy.integrate import solve_bvp
 import pandas as pd
+#from Auxiliary import u_m,u_p
 
 class Transport:
     def __init__(self, paramsFilename,L,supply_vs_demand):
@@ -14,6 +15,7 @@ class Transport:
 
         self.params_input['L']                = L;
         self.params_input['supply_vs_demand'] = supply_vs_demand;
+        self.params_input['full_supply'] = False;
 
     def __initialization(self):
         params   = self.params_input;
@@ -91,6 +93,7 @@ class Transport:
         elif(translation_type=='somatic'):
             J_m      = 0;
             J_p      = supply_vs_demand*L*eta_max_p;
+            #eta_max_m = 0;
         else:
             print('No supply source defined');
 
@@ -102,7 +105,31 @@ class Transport:
                        'eta_max_m':eta_max_m,'eta_max_p':eta_max_p,\
                        'gamma_tl':gamma_tl,\
                        'eta_0':params['eta_0'],\
-                       'L':L};
+                       'L':L,\
+                       'full_supply':params['full_supply']};
+
+    def u_m(self,m):
+        eta_max_m = self.params['eta_max_m'];
+        eta_0     = self.params['eta_0'];
+
+        if(self.params['full_supply'] or (eta_max_m == 0)):
+            fac = np.ones_like(m);
+        else:
+            fac = np.tanh(m/eta_max_m*eta_0);
+
+        return fac*eta_max_m;
+
+    def u_p(self,p):
+        eta_max_p = self.params['eta_max_p'];
+        eta_0     = self.params['eta_0'];
+
+        if(self.params['full_supply']):
+            fac = np.ones_like(p);
+        else:
+            fac = np.tanh(p/eta_max_p*eta_0);
+
+        return fac*eta_max_p;
+
 
     def GetSolution(self):
         if(hasattr(self,'res_p')):
@@ -140,13 +167,9 @@ class Transport:
         lambda_m  = self.params['lambda_m'];
         lambda_p  = self.params['lambda_p'];
 
-        def u_m(m):
-            return np.tanh(m/eta_max_m*eta_0)*eta_max_m;
+        full_supply = self.params['full_supply'];
 
-        def u_p(p):
-            return np.tanh(p/eta_max_p*eta_0)*eta_max_p;
-
-        proteinsToSynapses            = np.trapz(u_p(p),x=x);
+        proteinsToSynapses            = np.trapz(self.u_p(p),x=x);
         ratio_synapses_supplied       = proteinsToSynapses/eta_max_p/self.params['L'];
         particles_in_active_transport = 0;
         if(self.params_input['transport_p'] == 'active'):
@@ -156,7 +179,7 @@ class Transport:
             mRNA_all = np.trapz(m);
             particles_in_active_transport += mRNA_all;
 
-        m0                                          = np.trapz(u_m(m)/lambda_m,x=x);
+        m0                                          = np.trapz(self.u_m(m)/lambda_m,x=x);
         self.particles_in_active_transport_perLocalizedProtein  = particles_in_active_transport/(proteinsToSynapses/lambda_p);
         self.ratio_synapses_supplied                = ratio_synapses_supplied;
         self.ExcessProteins_translated_perSynapticProtein = np.max([0,(self.params['J_p'] + gamma_tl*m0 )/proteinsToSynapses - 1]);
@@ -177,6 +200,8 @@ class Transport:
         gamma_tl = self.params['gamma_tl'];
         eta_0    = self.params['eta_0'];
         L        = self.params['L'];
+
+        full_supply = self.params['full_supply'];
         #locals().update(self.params);
 
         # uptake of protein
@@ -185,11 +210,6 @@ class Transport:
         # uptake of mRNA into translating state: (tuned to satisfy protein demand)
         # u_m(m) = lambda/gamma_tl*tanh(m/epsilon_uptake)
 
-        def u_m(m):
-            return np.tanh(m/eta_max_m*eta_0)*eta_max_m;
-
-        def u_p(p):
-            return np.tanh(p/eta_max_p*eta_0)*eta_max_p;
 
         #Setting up equations / matrices
         #
@@ -204,20 +224,18 @@ class Transport:
         #y[0] = m
         #y[1] = dm/dx
         def fun_m(x, y):
-            return np.vstack((y[1],-1/D_m*(-v_m*y[1]-lambda_m*y[0]-u_m(y[0]) )));
+            return np.vstack((y[1],-1/D_m*(-v_m*y[1]-lambda_m*y[0]-self.u_m(y[0]) )));
 
         #y[0] = p
         #y[1] = dp/dx
         def fun_p(x, y):
-            m0 = u_m(res_m.sol(x)[0])/lambda_m;
-            return np.vstack((y[1],-1/D_p*(-v_p*y[1]-lambda_p*y[0]-u_p(y[0])+gamma_tl*m0)));
+            m0 = self.u_m(res_m.sol(x)[0])/lambda_m;
+            return np.vstack((y[1],-1/D_p*(-v_p*y[1]-lambda_p*y[0]-self.u_p(y[0])+gamma_tl*m0)));
 
-        #****************************
-        #Boundary conditions:
-        #****************************
-        #
+        #**********************************
+        #Boundary conditions supply driven:
+        #**********************************
         # at x=0: J_m = - D_eff_m*dm/dx + v_eff_m*m (influx)
-        #
         # at x=L: 0   = - D_eff_m*dm/dx + v_eff_m*m (influx)(no-outflux)
         def bc_m(ya, yb):
             return np.array([-D_m*ya[1]+v_m*ya[0]-J_m, -D_m*yb[1]+v_m*yb[0]]);
@@ -225,17 +243,38 @@ class Transport:
         def bc_p(ya, yb):
             return np.array([-D_p*ya[1]+v_p*ya[0]-J_p, -D_p*yb[1]+v_p*yb[0]]);
 
+        #***********************************************
+        #Boundary conditions demand driven: (100%supply)
+        #***********************************************
+        # at x=L: m   = 0
+        # at x=L: 0   = - D_eff_m*dm/dx + v_eff_m*m (influx)(no-outflux)
+        def bc_m_dem(ya, yb):
+            return np.array([yb[0], -D_m*yb[1]+v_m*yb[0]]);
+
+        def bc_p_dem(ya, yb):
+            return np.array([yb[0], -D_p*yb[1]+v_p*yb[0]]);
+
         x     = np.linspace(0,L,N)
         y_0   = np.zeros((2, x.size))
 
-        res_m = solve_bvp(fun_m, bc_m, x, y_0,max_nodes=1e4);
+
+        if(full_supply):
+            res_m = solve_bvp(fun_m, bc_m_dem, x, y_0,max_nodes=1e4);
+        else:
+            res_m = solve_bvp(fun_m, bc_m, x, y_0,max_nodes=1e4);
+
+
         if(res_m.status != 0):
             print(res_m.message);
             raise RuntimeError("solve_bvp for p did not converge");
         else:
             print("Max residuals m:"+str(np.max(res_m.rms_residuals)));
 
-        res_p = solve_bvp(fun_p, bc_p, x, y_0,max_nodes=1e4);
+        if(full_supply):
+            res_p = solve_bvp(fun_p, bc_p_dem, x, y_0,max_nodes=1e4);
+        else:
+            res_p = solve_bvp(fun_p, bc_p, x, y_0,max_nodes=1e4);
+
         if(res_p.status != 0):
             print(res_p.message);
             raise RuntimeError("solve_bvp for p did not converge");
