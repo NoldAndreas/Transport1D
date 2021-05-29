@@ -15,7 +15,7 @@ class Transport:
 
         self.params_input['L']                = L;
         self.params_input['supply_vs_demand'] = supply_vs_demand;
-        self.params_input['full_supply'] = False;
+        self.params_input['full_supply']      = True;
 
     def __initialization(self):
         params   = self.params_input;
@@ -93,7 +93,7 @@ class Transport:
         elif(translation_type=='somatic'):
             J_m      = 0;
             J_p      = supply_vs_demand*L*eta_max_p;
-            #eta_max_m = 0;
+            eta_max_m = 0;
         else:
             print('No supply source defined');
 

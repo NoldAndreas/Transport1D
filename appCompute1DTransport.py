@@ -67,6 +67,16 @@ app.layout = html.Div([
     ),
 
     html.H6(children="General properties:"),
+
+    dcc.RadioItems(
+        id='fullSupply',
+        options=[
+            {'label': 'Full supply', 'value': 'full_supply'},
+            {'label': 'Fixed influx', 'value': 'fixedInflux'},
+        ],
+        value='full_supply',
+        labelStyle={'display': 'inline-block'}
+    ) ,
     html.Div([
         dcc.Dropdown(
             id='transport-option',
@@ -135,6 +145,7 @@ app.layout = html.Div([
     dash.dependencies.Output('my-output-parameters', 'children'),
     dash.dependencies.Output('my-output-results', 'children'),
     dash.dependencies.Input('button', 'n_clicks'),
+    dash.dependencies.State('fullSupply', 'value'),
     dash.dependencies.State('transport-option', 'value'),
     dash.dependencies.State('L-slider', 'value'),
     dash.dependencies.State('input-halflife-m', 'value'),
@@ -144,7 +155,7 @@ app.layout = html.Div([
     dash.dependencies.State('input-D-p', 'value'),
     dash.dependencies.State('input-v-p', 'value'),
     )
-def update_output(n_clicks, value,valueL,halflife_m,Dm,vm,\
+def update_output(n_clicks, valueFullSupply,value,valueL,halflife_m,Dm,vm,\
                                          halflife_p,Dp,vp):
     #fig.update_layout(clickmode='event+select')
     if((n_clicks != None) and  (n_clicks>0)):
@@ -156,6 +167,8 @@ def update_output(n_clicks, value,valueL,halflife_m,Dm,vm,\
         TR.params_input['halflife_p'] = float(halflife_p);
         TR.params_input['D_p'] = float(Dp);
         TR.params_input['v_p'] = float(vp);
+        TR.params_input['full_supply'] = (valueFullSupply=='full_supply');
+
         TR.SolveTransportEqs(N);
         df = TR.GetSolution();
         rows_results.append((TR.GetParametersAndResults(combineParameter=True)).copy());
