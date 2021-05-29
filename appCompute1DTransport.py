@@ -134,6 +134,10 @@ app.layout = html.Div([
     dcc.Graph(
         id='graph-costs-1'
     ),
+    html.Div(
+        [html.P(children='Site by Andreas Nold'),
+        dcc.Link('Github', href='https://github.com/NoldAndreas/Transport1D',refresh=True)],
+        style={'textAlign':'center'}),
 ])
 
 
