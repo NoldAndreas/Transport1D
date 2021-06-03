@@ -1,6 +1,7 @@
 import json
 
 import dash
+import dash_table
 import dash_core_components as dcc
 import dash_html_components as html
 from dash.dependencies import Input, Output
@@ -28,10 +29,15 @@ TransportOptions = ['somatic, passive protein transport',\
 resultsToDisplay = ['Particles in active transport (per synaptic protein)',\
                     'Excess proteins translated (per synaptic protein)',\
                     'Excess mRNA transcribed (per synaptic protein)'];
-    
+
 paramsToDisplay = ['L','halflife_m','uptake_mRNA','D_m','v_m',\
                     'uptake_proteins','halflife_p','D_p','v_p',\
                     'boundaryCondition'];
+
+colsToDisplay = [{"name":"idx","id":'idx'}];
+for p in paramsToDisplay:
+    colsToDisplay.append({"name":p,"id":p});
+
 
 rows_results = [];
 rows_params  = [];
@@ -136,6 +142,12 @@ app.layout = html.Div([
     html.Button('Compute', id='button'),
     html.P(children="Parameters:"),
     html.Div(id='my-output-parameters'),
+    dash_table.DataTable(
+        id='tableParameters',
+        columns=colsToDisplay
+        #[{'name': 'Column 1', 'id': 'column1'},{'name': 'Column 2', 'id': 'column2'}]
+    ),
+
     html.P(children="Results:"),
     html.Div(id='my-output-results',style={'whiteSpace': 'pre-line'}),
     dcc.Graph(
@@ -152,6 +164,7 @@ app.layout = html.Div([
     dash.dependencies.Output('graphOutput', 'figure'),
     dash.dependencies.Output('graph-costs-1', 'figure'),
     dash.dependencies.Output('my-output-parameters', 'children'),
+    dash.dependencies.Output('tableParameters', component_property='data'),
     dash.dependencies.Output('my-output-results', 'children'),
     dash.dependencies.Input('button', 'n_clicks'),
     dash.dependencies.State('boundaryCondition', 'value'),
@@ -200,7 +213,8 @@ def update_output(n_clicks, valueboundaryCondition,value_uptakemRNA,value_uptake
         df_res["idx"] = np.asarray(df_res.index);
 
         for p in df_res:
-            df_res[p] = np.maximum(1e-6,df_res[p]);
+            if(p != "idx"):
+                df_res[p] = np.maximum(1e-6,df_res[p]);
         #df_res["Particles in active transport (per synaptic protein)"] = np.maximum(1e-6,np.asarray(df_res["Particles in active transport (per synaptic protein)"]));
         df_p   = df_res.melt(id_vars=["idx"],var_name="Measure",value_name="Value");
         fig2   = px.strip(df_p,x="Value",color="idx",y="Measure",log_x=True);
@@ -214,9 +228,12 @@ def update_output(n_clicks, valueboundaryCondition,value_uptakemRNA,value_uptake
         df_res = pd.DataFrame([]);
         fig2   = px.strip(df_res);
 
-    df_params       = pd.DataFrame(rows_params);
-
-    return fig,fig2,str(TR.params_input),format(df_params.to_string())#TR.params_input)#fig
+    df_params        = pd.DataFrame(rows_params);
+    df_params['idx'] = df_params.index;
+#    dictParams = {};#
+    #dictParams['column1'] = 1.0;
+    #dictParams['column2'] = 1.0;
+    return fig,fig2,str(TR.params_input),df_params.to_dict("records"),format(df_res.to_string())#TR.params_input)#fig
 
 
 if __name__ == '__main__':
