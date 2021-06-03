@@ -25,30 +25,6 @@ TransportOptions = ['somatic, passive protein transport',\
                     'dendritic, passive mRNA transport',\
                     'dendritic, active mRNA transport'];
 
-list_of_parameters = ['alpha_m',
- 'beta_plus_m',
- 'beta_minus_m',
- 'v_m',
- 'D_m',
- 'transport_m',
- 'halflife_m',
- 'gamma_tl',
- 'translation',
- 'alpha_p',
- 'beta_plus_p',
- 'beta_minus_p',
- 'v_p',
- 'D_p',
- 'transport_p',
- 'halflife_p',
- 'eta_0',
- 'eta_max',
- 'spine_density',
- 'max_runs',
- 'min_mesh_width',
- 'num_eval_points',
- 'rall_exp',
- 'L','name','supply_vs_demand','ratio_synapses_supplied'];
 
 rows_results = [];
 #************************
@@ -69,14 +45,15 @@ app.layout = html.Div([
     html.H6(children="General properties:"),
 
     dcc.RadioItems(
-        id='fullSupply',
+        id='boundaryCondition',
         options=[
-            {'label': 'Full supply', 'value': 'full_supply'},
-            {'label': 'Fixed influx', 'value': 'fixedInflux'},
+            {'label': 'Fix influx', 'value': 'fix_influx'},
+            {'label': 'Fix end concentration to zero', 'value': 'fix_EndConcentration'},
         ],
-        value='full_supply',
+        value='fix_influx',
         labelStyle={'display': 'inline-block'}
     ) ,
+
     html.Div([
         dcc.Dropdown(
             id='transport-option',
@@ -104,6 +81,18 @@ app.layout = html.Div([
     html.Div([
         html.H6(children="mRNA properties:"),
 
+        html.P('Synaptic uptake / localization:'),
+        dcc.RadioItems(
+            id='uptake_mRNA',
+            options=[
+                {'label': 'linear', 'value': 'linear'},
+                {'label': 'tanh', 'value': 'tanh'},
+                {'label': 'constant', 'value': 'const'},
+            ],
+            value='const',
+            labelStyle={'display': 'inline-block'}
+        ),
+
         html.P(children="Halflife (seconds):"),dcc.Input(id="input-halflife-m", type="number", value=25200),
 
         html.P(children="Resting state diffusion constant (mu m^2/seconds):"),dcc.Input(id="input-D-m", type="number", value=0.1,step=0.1),
@@ -114,6 +103,18 @@ app.layout = html.Div([
     #************************************************
     html.Div([
         html.H6(children="Protein properties:"),
+
+        html.P('Synaptic uptake / localization:'),
+        dcc.RadioItems(
+            id='uptake_proteins',
+            options=[
+                {'label': 'linear', 'value': 'linear'},
+                {'label': 'tanh', 'value': 'tanh'},
+                {'label': 'constant', 'value': 'const'},
+            ],
+            value='const',
+            labelStyle={'display': 'inline-block'}
+        ),
 
         html.P(children="Halflife (seconds):"),dcc.Input(id="input-halflife-p", type="number", value=432000),
 
@@ -145,7 +146,9 @@ app.layout = html.Div([
     dash.dependencies.Output('my-output-parameters', 'children'),
     dash.dependencies.Output('my-output-results', 'children'),
     dash.dependencies.Input('button', 'n_clicks'),
-    dash.dependencies.State('fullSupply', 'value'),
+    dash.dependencies.State('boundaryCondition', 'value'),
+    dash.dependencies.State('uptake_mRNA', 'value'),
+    dash.dependencies.State('uptake_proteins', 'value'),
     dash.dependencies.State('transport-option', 'value'),
     dash.dependencies.State('L-slider', 'value'),
     dash.dependencies.State('input-halflife-m', 'value'),
@@ -155,7 +158,7 @@ app.layout = html.Div([
     dash.dependencies.State('input-D-p', 'value'),
     dash.dependencies.State('input-v-p', 'value'),
     )
-def update_output(n_clicks, valueFullSupply,value,valueL,halflife_m,Dm,vm,\
+def update_output(n_clicks, valueboundaryCondition,value_uptakemRNA,value_uptakeProtein,value,valueL,halflife_m,Dm,vm,\
                                          halflife_p,Dp,vp):
     #fig.update_layout(clickmode='event+select')
     if((n_clicks != None) and  (n_clicks>0)):
@@ -167,7 +170,9 @@ def update_output(n_clicks, valueFullSupply,value,valueL,halflife_m,Dm,vm,\
         TR.params_input['halflife_p'] = float(halflife_p);
         TR.params_input['D_p'] = float(Dp);
         TR.params_input['v_p'] = float(vp);
-        TR.params_input['full_supply'] = (valueFullSupply=='full_supply');
+        TR.params_input['boundaryCondition'] = valueboundaryCondition;
+        TR.params_input['uptake_mRNA'] = value_uptakemRNA;
+        TR.params_input['uptake_proteins'] = value_uptakeProtein;
 
         TR.SolveTransportEqs(N);
         df = TR.GetSolution();
