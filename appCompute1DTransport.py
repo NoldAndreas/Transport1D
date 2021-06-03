@@ -26,9 +26,9 @@ TransportOptions = ['somatic, passive protein transport',\
                     'dendritic, passive mRNA transport',\
                     'dendritic, active mRNA transport'];
 
-resultsToDisplay = ['Particles in active transport (per synaptic protein)',\
-                    'Excess proteins translated (per synaptic protein)',\
-                    'Excess mRNA transcribed (per synaptic protein)'];
+resultsToDisplay = ['Particles in active transport',\
+                    'Excess proteins translated',\
+                    'Excess mRNA transcribed'];
 
 paramsToDisplay = ['L','halflife_m','uptake_mRNA','D_m','v_m',\
                     'uptake_proteins','halflife_p','D_p','v_p',\
@@ -52,10 +52,8 @@ app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 
 app.layout = html.Div([
     html.H1(children='mRNA and Protein transport in neuronal dendrites'),
-    dcc.Graph(
-        id='graphOutput'
-    ),
 
+    html.H3(children="Parameters:"),
     html.H6(children="General properties:"),
 
     dcc.RadioItems(
@@ -140,32 +138,44 @@ app.layout = html.Div([
 
     html.Br(),
     html.Button('Compute', id='button'),
-    html.P(children="Parameters:"),
-    html.Div(id='my-output-parameters'),
+
+    #html.Div(id='my-output-parameters'),
+
+    html.H3(children="Results:"),
+
+    html.Div([
+    html.Div(
+    dcc.Graph(
+        id='graphOutput'
+    ),style={'width': '49%', 'display': 'inline-block'}),
+    html.Div(
+    dcc.Graph(
+        id='graph-costs-1'
+    ),style={'width': '49%', 'display': 'inline-block'}),
+    ]),
+
+    html.Label('Parameters of all computations'),
     dash_table.DataTable(
         id='tableParameters',
-        columns=colsToDisplay
+        columns=colsToDisplay,
         #[{'name': 'Column 1', 'id': 'column1'},{'name': 'Column 2', 'id': 'column2'}]
     ),
 
-    html.P(children="Results:"),
-    html.Div(id='my-output-results',style={'whiteSpace': 'pre-line'}),
-    dcc.Graph(
-        id='graph-costs-1'
-    ),
+    #html.Div(id='my-output-results',style={'whiteSpace': 'pre-line'}),
     html.Div(
         [html.P(children='Site by Andreas Nold'),
         dcc.Link('Github', href='https://github.com/NoldAndreas/Transport1D',refresh=True)],
         style={'textAlign':'center'}),
+
 ])
 
 
 @app.callback(
     dash.dependencies.Output('graphOutput', 'figure'),
     dash.dependencies.Output('graph-costs-1', 'figure'),
-    dash.dependencies.Output('my-output-parameters', 'children'),
+    #dash.dependencies.Output('my-output-parameters', 'children'),
     dash.dependencies.Output('tableParameters', component_property='data'),
-    dash.dependencies.Output('my-output-results', 'children'),
+    #dash.dependencies.Output('my-output-results', 'children'),
     dash.dependencies.Input('button', 'n_clicks'),
     dash.dependencies.State('boundaryCondition', 'value'),
     dash.dependencies.State('uptake_mRNA', 'value'),
@@ -205,7 +215,7 @@ def update_output(n_clicks, valueboundaryCondition,value_uptakemRNA,value_uptake
 
     df = df.melt(id_vars=['x'],var_name="Quantity",value_name="Value")
 
-    fig = px.line(df, x="x", y="Value",facet_row="Quantity",color="Quantity");
+    fig = px.line(df, x="x", y="Value",facet_row="Quantity",color="Quantity",title="Protein and mRNA concentrations (last computation):");
     fig.update_yaxes(matches=None);
 
     if(len(rows_results) > 0):
@@ -217,7 +227,7 @@ def update_output(n_clicks, valueboundaryCondition,value_uptakemRNA,value_uptake
                 df_res[p] = np.maximum(1e-6,df_res[p]);
         #df_res["Particles in active transport (per synaptic protein)"] = np.maximum(1e-6,np.asarray(df_res["Particles in active transport (per synaptic protein)"]));
         df_p   = df_res.melt(id_vars=["idx"],var_name="Measure",value_name="Value");
-        fig2   = px.strip(df_p,x="Value",color="idx",y="Measure",log_x=True);
+        fig2   = px.strip(df_p,x="Value",color="idx",y="Measure",log_x=True,title="Energies of all computations:");
         fig2.layout.update(showlegend=False,xaxis = dict(
             tickmode = 'array',
             tickvals = [1e-6,1e-4,1e-2,1],
@@ -226,14 +236,14 @@ def update_output(n_clicks, valueboundaryCondition,value_uptakemRNA,value_uptake
 
     else:
         df_res = pd.DataFrame([]);
-        fig2   = px.strip(df_res);
+        fig2   = px.strip(df_res,title="Energies of all computations (per synaptic protein):");
 
     df_params        = pd.DataFrame(rows_params);
     df_params['idx'] = df_params.index;
 #    dictParams = {};#
     #dictParams['column1'] = 1.0;
     #dictParams['column2'] = 1.0;
-    return fig,fig2,str(TR.params_input),df_params.to_dict("records"),format(df_res.to_string())#TR.params_input)#fig
+    return fig,fig2,df_params.to_dict("records")#str(TR.params_input),format(df_res.to_string())#TR.params_input)#fig
 
 
 if __name__ == '__main__':

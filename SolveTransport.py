@@ -209,10 +209,10 @@ class Transport:
 
         m0                                          = np.trapz(self.u_m(m)/lambda_m,x=x);
         self.results = {};
-        self.results['Particles in active transport (per synaptic protein)']  = particles_in_active_transport/(proteinsToSynapses/lambda_p);
+        self.results['Particles in active transport']  = particles_in_active_transport/(proteinsToSynapses/lambda_p);
         self.results['ratio_synapses_supplied']               = ratio_synapses_supplied;
-        self.results['Excess proteins translated (per synaptic protein)'] = np.max([0,(J_p + gamma_tl*m0 )/proteinsToSynapses - 1]);
-        self.results['Excess mRNA transcribed (per synaptic protein)']    = (J_m + J_p*lambda_m/gamma_tl)/(proteinsToSynapses*lambda_m/gamma_tl)- 1;
+        self.results['Excess proteins translated'] = np.max([0,(J_p + gamma_tl*m0 )/proteinsToSynapses - 1]);
+        self.results['Excess mRNA transcribed']    = (J_m + J_p*lambda_m/gamma_tl)/(proteinsToSynapses*lambda_m/gamma_tl)- 1;
 
         return ratio_synapses_supplied,particles_in_active_transport;
 
