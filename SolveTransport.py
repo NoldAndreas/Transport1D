@@ -153,17 +153,33 @@ class Transport:
             m = [0,0];
         return pd.DataFrame({'x':x,'protein':p,'mRNA':m});
 
-    def GetParametersAndResults(self,combineParameter=False):
-        if(combineParameter):
-            p_all = {};
-            p_all['parameters'] = str(self.params_input);
-        else:
-            p_all = self.params_input;
-        p_all['particles_in_active_transport_perLocalizedProtein']  = self.particles_in_active_transport_perLocalizedProtein;
-        p_all['ratio_synapses_supplied']                            = self.ratio_synapses_supplied;
-        p_all['ExcessmRNA_transcribed_perSynapticProtein']          = self.ExcessmRNA_transcribed_perSynapticProtein;
-        p_all['ExcessProteins_translated_perSynapticProtein']       = self.ExcessProteins_translated_perSynapticProtein;
-        return p_all;
+    def GetParameters(self,paramsList):
+        paramsDict = {};
+        for p in paramsList:
+            paramsDict[p] = self.params_input[p];
+
+        return paramsDict;
+
+    def GetResults(self,resultsList):
+
+        resultsDict = {};
+        for p in resultsList:
+            resultsDict[p] = self.results[p];
+
+        return resultsDict;
+
+
+    # def GetParametersAndResults(self,combineParameter=False):
+    #     if(combineParameter):
+    #         p_all = {};
+    #         p_all['parameters'] = str(self.params_input);
+    #     else:
+    #         p_all = self.params_input;
+    #     p_all['particles_in_active_transport_perLocalizedProtein']  = self.particles_in_active_transport_perLocalizedProtein;
+    #     p_all['ratio_synapses_supplied']                            = self.ratio_synapses_supplied;
+    #     p_all['ExcessmRNA_transcribed_perSynapticProtein']          = self.ExcessmRNA_transcribed_perSynapticProtein;
+    #     p_all['ExcessProteins_translated_perSynapticProtein']       = self.ExcessProteins_translated_perSynapticProtein;
+    #     return p_all;
 
     def __computeCostItems(self):
 
@@ -189,10 +205,11 @@ class Transport:
             particles_in_active_transport += mRNA_all;
 
         m0                                          = np.trapz(self.u_m(m)/lambda_m,x=x);
-        self.particles_in_active_transport_perLocalizedProtein  = particles_in_active_transport/(proteinsToSynapses/lambda_p);
-        self.ratio_synapses_supplied                = ratio_synapses_supplied;
-        self.ExcessProteins_translated_perSynapticProtein = np.max([0,(self.params['J_p'] + gamma_tl*m0 )/proteinsToSynapses - 1]);
-        self.ExcessmRNA_transcribed_perSynapticProtein    = (self.params['J_m'] + self.params['J_p']*lambda_m/gamma_tl)/(proteinsToSynapses*lambda_m/gamma_tl)- 1;
+        self.results = {};
+        self.results['Particles in active transport (per synaptic protein)']  = particles_in_active_transport/(proteinsToSynapses/lambda_p);
+        self.results['ratio_synapses_supplied']               = ratio_synapses_supplied;
+        self.results['Excess proteins translated (per synaptic protein)'] = np.max([0,(self.params['J_p'] + gamma_tl*m0 )/proteinsToSynapses - 1]);
+        self.results['Excess mRNA transcribed (per synaptic protein)']    = (self.params['J_m'] + self.params['J_p']*lambda_m/gamma_tl)/(proteinsToSynapses*lambda_m/gamma_tl)- 1;
 
         return ratio_synapses_supplied,particles_in_active_transport;
 
@@ -266,7 +283,7 @@ class Transport:
         x     = np.linspace(0,L,N)
         y_0   = np.zeros((2, x.size))
 
-        
+
         if(boundaryCondition == 'fix_EndConcentration'):
             res_m = solve_bvp(fun_m, bc_m_dem, x, y_0,max_nodes=1e4);
         elif(boundaryCondition == 'fix_influx'):

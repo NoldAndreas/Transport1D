@@ -25,8 +25,16 @@ TransportOptions = ['somatic, passive protein transport',\
                     'dendritic, passive mRNA transport',\
                     'dendritic, active mRNA transport'];
 
+resultsToDisplay = ['Particles in active transport (per synaptic protein)',\
+                    'Excess proteins translated (per synaptic protein)',\
+                    'Excess mRNA transcribed (per synaptic protein)'];
+    
+paramsToDisplay = ['L','halflife_m','uptake_mRNA','D_m','v_m',\
+                    'uptake_proteins','halflife_p','D_p','v_p',\
+                    'boundaryCondition'];
 
 rows_results = [];
+rows_params  = [];
 #************************
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
@@ -176,7 +184,9 @@ def update_output(n_clicks, valueboundaryCondition,value_uptakemRNA,value_uptake
 
         TR.SolveTransportEqs(N);
         df = TR.GetSolution();
-        rows_results.append((TR.GetParametersAndResults(combineParameter=True)).copy());
+        #rows_results.append((TR.GetParametersAndResults(combineParameter=True)).copy());
+        rows_results.append(TR.GetResults(resultsToDisplay));
+        rows_params.append(TR.GetParameters(paramsToDisplay));
     else:
         df = TR.GetSolution();
 
@@ -186,23 +196,27 @@ def update_output(n_clicks, valueboundaryCondition,value_uptakemRNA,value_uptake
     fig.update_yaxes(matches=None);
 
     if(len(rows_results) > 0):
-        df_res = pd.DataFrame(rows_results);
+        df_res        = pd.DataFrame(rows_results);
         df_res["idx"] = np.asarray(df_res.index);
-        df_res["particles_in_active_transport_perLocalizedProtein"] = np.maximum(1e-6,np.asarray(df_res["particles_in_active_transport_perLocalizedProtein"]));
-        df_p   = df_res.melt(id_vars=["idx","parameters"],var_name="Measure",value_name="Value");
+
+        for p in df_res:
+            df_res[p] = np.maximum(1e-6,df_res[p]);
+        #df_res["Particles in active transport (per synaptic protein)"] = np.maximum(1e-6,np.asarray(df_res["Particles in active transport (per synaptic protein)"]));
+        df_p   = df_res.melt(id_vars=["idx"],var_name="Measure",value_name="Value");
         fig2   = px.strip(df_p,x="Value",color="idx",y="Measure",log_x=True);
         fig2.layout.update(showlegend=False,xaxis = dict(
             tickmode = 'array',
             tickvals = [1e-6,1e-4,1e-2,1],
-            ticktext = ['0','1e-4','1e-2','1']
+            ticktext = ['<1e-6','1e-4','1e-2','1']
         ))
 
     else:
         df_res = pd.DataFrame([]);
         fig2   = px.strip(df_res);
 
+    df_params       = pd.DataFrame(rows_params);
 
-    return fig,fig2,str(TR.params_input),format(df_res.to_string())#TR.params_input)#fig
+    return fig,fig2,str(TR.params_input),format(df_params.to_string())#TR.params_input)#fig
 
 
 if __name__ == '__main__':
