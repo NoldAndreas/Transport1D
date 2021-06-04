@@ -2,7 +2,6 @@ import numpy as np
 import json
 from scipy.integrate import solve_bvp
 import pandas as pd
-#from Auxiliary import u_m,u_p
 
 class Transport:
     def __init__(self, paramsFilename,L,supply_vs_demand):
@@ -15,7 +14,6 @@ class Transport:
 
         self.params_input['L']                = L;
         self.params_input['supply_vs_demand'] = supply_vs_demand;
-        self.params_input['boundaryCondition']  = 'fix_influx'; #fix_influx, fix_EndConcentration
         self.params_input['uptake_mRNA']      = 'const'; #linear / tanh / const
         self.params_input['uptake_proteins']  = 'const';
 
@@ -108,7 +106,6 @@ class Transport:
                        'gamma_tl':gamma_tl,\
                        'eta_0':params['eta_0'],\
                        'L':L,\
-                       'boundaryCondition':params['boundaryCondition'],\
                        'uptake_mRNA':params['uptake_mRNA'],'uptake_proteins':params['uptake_proteins']};
 
     def u_m(self,m):
@@ -120,7 +117,7 @@ class Transport:
         elif((self.params['uptake_mRNA'] == 'tanh')):
             fac = np.tanh(m/eta_max_m*eta_0);
         elif((self.params['uptake_mRNA'] == 'linear')):
-            fac = m;
+            fac = m*np.tanh(m/eta_max_m*eta_0);
         else:
             raise ValueError("mRNA uptake must be linear, tanh or const")
 
@@ -135,7 +132,7 @@ class Transport:
         elif((self.params['uptake_proteins'] == 'tanh')):
             fac = np.tanh(p/eta_max_p*eta_0);
         elif((self.params['uptake_proteins'] == 'linear')):
-            fac = p;
+            fac = p*np.tanh(p/eta_max_p*eta_0);
         else:
             raise ValueError("protein uptake must be linear, tanh or const")
 
@@ -230,7 +227,6 @@ class Transport:
         eta_0    = self.params['eta_0'];
         L        = self.params['L'];
 
-        boundaryCondition = self.params['boundaryCondition'];
         #locals().update(self.params);
 
         # uptake of protein
@@ -287,12 +283,13 @@ class Transport:
         y_0   = np.zeros((2, x.size))
 
 
-        if(boundaryCondition == 'fix_EndConcentration'):
+        if(self.params['uptake_mRNA']=='const'):
             res_m = solve_bvp(fun_m, bc_m_dem, x, y_0,max_nodes=1e4);
-        elif(boundaryCondition == 'fix_influx'):
-            res_m = solve_bvp(fun_m, bc_m, x, y_0,max_nodes=1e4);
         else:
-            raise ValueError("boundary condition must fix influx or end concentration");
+            res_m = solve_bvp(fun_m, bc_m, x, y_0,max_nodes=1e4);
+
+        #else:
+    #        raise ValueError("boundary condition must fix influx or end concentration");
 
 
         if(res_m.status != 0):
@@ -301,12 +298,11 @@ class Transport:
         else:
             print("Max residuals m:"+str(np.max(res_m.rms_residuals)));
 
-        if(boundaryCondition == 'fix_EndConcentration'):
+        if(self.params['uptake_proteins']=='const'):
             res_p = solve_bvp(fun_p, bc_p_dem, x, y_0,max_nodes=1e4);
-        elif(boundaryCondition == 'fix_influx'):
-            res_p = solve_bvp(fun_p, bc_p, x, y_0,max_nodes=1e4);
         else:
-            raise ValueError("boundary condition must fix influx or end concentration");
+            res_p = solve_bvp(fun_p, bc_p, x, y_0,max_nodes=1e4);
+
 
         if(res_p.status != 0):
             print(res_p.message);

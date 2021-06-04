@@ -30,9 +30,8 @@ resultsToDisplay = ['Particles in active transport',\
                     'Excess proteins translated',\
                     'Excess mRNA transcribed'];
 
-paramsToDisplay = ['L','halflife_m','uptake_mRNA','D_m','v_m',\
-                    'uptake_proteins','halflife_p','D_p','v_p',\
-                    'boundaryCondition'];
+paramsToDisplay = ['name','L','halflife_m','uptake_mRNA','D_m','v_m',\
+                    'uptake_proteins','halflife_p','D_p','v_p'];
 
 colsToDisplay = [{"name":"idx","id":'idx'}];
 for p in paramsToDisplay:
@@ -55,16 +54,6 @@ app.layout = html.Div([
 
     html.H3(children="Parameters:"),
     html.H6(children="General properties:"),
-
-    dcc.RadioItems(
-        id='boundaryCondition',
-        options=[
-            {'label': 'Fix influx', 'value': 'fix_influx'},
-            {'label': 'Fix end concentration to zero', 'value': 'fix_EndConcentration'},
-        ],
-        value='fix_influx',
-        labelStyle={'display': 'inline-block'}
-    ) ,
 
     html.Div([
         dcc.Dropdown(
@@ -91,13 +80,13 @@ app.layout = html.Div([
     html.Div([
 
     html.Div([
-        html.H6(children="mRNA properties:"),
+        html.H6(children="mRNA properties (for dendritic translation):"),
 
-        html.P('Synaptic uptake / localization:'),
+        html.P('Synaptic uptake / localization (for translation):'),
         dcc.RadioItems(
             id='uptake_mRNA',
             options=[
-                {'label': 'linear', 'value': 'linear'},
+                {'label': 'linear ramp', 'value': 'linear'},
                 {'label': 'tanh', 'value': 'tanh'},
                 {'label': 'constant', 'value': 'const'},
             ],
@@ -120,7 +109,7 @@ app.layout = html.Div([
         dcc.RadioItems(
             id='uptake_proteins',
             options=[
-                {'label': 'linear', 'value': 'linear'},
+                {'label': 'linear ramp', 'value': 'linear'},
                 {'label': 'tanh', 'value': 'tanh'},
                 {'label': 'constant', 'value': 'const'},
             ],
@@ -138,6 +127,7 @@ app.layout = html.Div([
 
     html.Br(),
     html.Button('Compute', id='button'),
+    html.Button('Clear Results', id='buttonClear'),
 
     #html.Div(id='my-output-parameters'),
 
@@ -173,11 +163,9 @@ app.layout = html.Div([
 @app.callback(
     dash.dependencies.Output('graphOutput', 'figure'),
     dash.dependencies.Output('graph-costs-1', 'figure'),
-    #dash.dependencies.Output('my-output-parameters', 'children'),
     dash.dependencies.Output('tableParameters', component_property='data'),
-    #dash.dependencies.Output('my-output-results', 'children'),
     dash.dependencies.Input('button', 'n_clicks'),
-    dash.dependencies.State('boundaryCondition', 'value'),
+    dash.dependencies.Input('buttonClear', 'n_clicks'),
     dash.dependencies.State('uptake_mRNA', 'value'),
     dash.dependencies.State('uptake_proteins', 'value'),
     dash.dependencies.State('transport-option', 'value'),
@@ -189,27 +177,36 @@ app.layout = html.Div([
     dash.dependencies.State('input-D-p', 'value'),
     dash.dependencies.State('input-v-p', 'value'),
     )
-def update_output(n_clicks, valueboundaryCondition,value_uptakemRNA,value_uptakeProtein,value,valueL,halflife_m,Dm,vm,\
+def update_output(n_clicks,n_clicks_Clear,value_uptakemRNA,value_uptakeProtein,value,valueL,halflife_m,Dm,vm,\
                                          halflife_p,Dp,vp):
-    #fig.update_layout(clickmode='event+select')
-    if((n_clicks != None) and  (n_clicks>0)):
-        TR.params_input['name'] = value;
-        TR.params_input['L'] = valueL;
-        TR.params_input['halflife_m'] = float(halflife_m);#float(halflife_m),
-        TR.params_input['D_m'] = float(Dm);
-        TR.params_input['v_m'] = float(vm);
-        TR.params_input['halflife_p'] = float(halflife_p);
-        TR.params_input['D_p'] = float(Dp);
-        TR.params_input['v_p'] = float(vp);
-        TR.params_input['boundaryCondition'] = valueboundaryCondition;
-        TR.params_input['uptake_mRNA'] = value_uptakemRNA;
-        TR.params_input['uptake_proteins'] = value_uptakeProtein;
 
-        TR.SolveTransportEqs(N);
+    changed_id = [p['prop_id'] for p in dash.callback_context.triggered][0];
+
+    global rows_results, rows_params
+    if('buttonClear' in changed_id):
+        rows_results = [];
+        rows_params  = [];
+        #print("Clear clicked");
         df = TR.GetSolution();
-        #rows_results.append((TR.GetParametersAndResults(combineParameter=True)).copy());
-        rows_results.append(TR.GetResults(resultsToDisplay));
-        rows_params.append(TR.GetParameters(paramsToDisplay));
+    elif('button' in changed_id):
+        #fig.update_layout(clickmode='event+select')
+        if((n_clicks != None) and  (n_clicks>0)):
+            TR.params_input['name'] = value;
+            TR.params_input['L'] = valueL;
+            TR.params_input['halflife_m'] = float(halflife_m);#float(halflife_m),
+            TR.params_input['D_m'] = float(Dm);
+            TR.params_input['v_m'] = float(vm);
+            TR.params_input['halflife_p'] = float(halflife_p);
+            TR.params_input['D_p'] = float(Dp);
+            TR.params_input['v_p'] = float(vp);
+            TR.params_input['uptake_mRNA'] = value_uptakemRNA;
+            TR.params_input['uptake_proteins'] = value_uptakeProtein;
+
+            TR.SolveTransportEqs(N);
+            df = TR.GetSolution();
+            #rows_results.append((TR.GetParametersAndResults(combineParameter=True)).copy());
+            rows_results.append(TR.GetResults(resultsToDisplay));
+            rows_params.append(TR.GetParameters(paramsToDisplay));
     else:
         df = TR.GetSolution();
 
@@ -220,15 +217,16 @@ def update_output(n_clicks, valueboundaryCondition,value_uptakemRNA,value_uptake
 
     if(len(rows_results) > 0):
         df_res        = pd.DataFrame(rows_results);
-        df_res["idx"] = np.asarray(df_res.index);
+        df_res["idx"] = np.asarray([str(i) for i in df_res.index]);
 
         for p in df_res:
             if(p != "idx"):
                 df_res[p] = np.maximum(1e-6,df_res[p]);
         #df_res["Particles in active transport (per synaptic protein)"] = np.maximum(1e-6,np.asarray(df_res["Particles in active transport (per synaptic protein)"]));
         df_p   = df_res.melt(id_vars=["idx"],var_name="Measure",value_name="Value");
-        fig2   = px.strip(df_p,x="Value",color="idx",y="Measure",log_x=True,title="Energies of all computations:");
-        fig2.layout.update(showlegend=False,xaxis = dict(
+        fig2   = px.scatter(df_p,x="Value",y="Measure",color="idx",hover_name="idx",\
+                            log_x=True,title="Energies of all computations (per synaptic protein):",color_discrete_sequence=px.colors.qualitative.Vivid);
+        fig2.layout.update(xaxis = dict(
             tickmode = 'array',
             tickvals = [1e-6,1e-4,1e-2,1],
             ticktext = ['<1e-6','1e-4','1e-2','1']
@@ -243,7 +241,7 @@ def update_output(n_clicks, valueboundaryCondition,value_uptakemRNA,value_uptake
 #    dictParams = {};#
     #dictParams['column1'] = 1.0;
     #dictParams['column2'] = 1.0;
-    return fig,fig2,df_params.to_dict("records")#str(TR.params_input),format(df_res.to_string())#TR.params_input)#fig
+    return fig,fig2,df_params.to_dict("records")
 
 
 if __name__ == '__main__':
